@@ -8,82 +8,53 @@ export function useSupabaseBoats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial data fetch and real-time subscription setup
   useEffect(() => {
     const fetchBoats = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Get boats from Supabase
         const { data, error } = await supabase
           .from('boats')
           .select('*')
           .order('arrival_date', { ascending: false });
-          
+
         if (error) throw error;
-        
-        // Convert from Supabase format to app format
         setBoats(data.map(boatFromSupabase));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch boats';
         setError(message);
-        toast.error(`Error loading boats: ${message}`);
-        console.error('Error fetching boats:', err);
+        toast.error('Error loading boats');
       } finally {
         setLoading(false);
       }
     };
 
-    // Set up real-time subscription
-    const setupRealtimeSubscription = () => {
-      const channel = supabase
-        .channel('boats-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'boats' },
-          (payload) => {
-            if (payload.eventType === 'INSERT') {
-              setBoats((current) => [boatFromSupabase(payload.new), ...current]);
-              toast.success('New boat added');
-            } else if (payload.eventType === 'UPDATE') {
-              setBoats((current) => 
-                current.map((boat) => 
-                  boat.id === payload.new.id ? boatFromSupabase(payload.new) : boat
-                )
-              );
-              toast.success('Boat updated');
-            } else if (payload.eventType === 'DELETE') {
-              setBoats((current) => 
-                current.filter((boat) => boat.id !== payload.old.id)
-              );
-              toast.success('Boat removed');
-            }
+    const channel = supabase
+      .channel('boats-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'boats' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setBoats(current => [boatFromSupabase(payload.new), ...current]);
+          } else if (payload.eventType === 'UPDATE') {
+            setBoats(current =>
+              current.map(b => b.id === payload.new.id ? boatFromSupabase(payload.new) : b)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setBoats(current => current.filter(b => b.id !== payload.old.id));
           }
-        )
-        .subscribe((status) => {
-          if (status !== 'SUBSCRIBED') {
-            console.error('Failed to subscribe to real-time updates');
-            toast.error('Real-time updates unavailable');
-          }
-        });
-      
-      return channel;
-    };
+        }
+      )
+      .subscribe();
 
-    // Initial fetch
     fetchBoats();
-    
-    // Set up subscription
-    const channel = setupRealtimeSubscription();
-    
-    // Cleanup subscription
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // Helper to convert Supabase format to app format
   const boatFromSupabase = (dbBoat: any): Boat => ({
     id: dbBoat.id,
     name: dbBoat.name,
@@ -94,8 +65,7 @@ export function useSupabaseBoats() {
     notes: dbBoat.notes || '',
     side: dbBoat.side
   });
-  
-  // Helper to convert app format to Supabase format
+
   const boatToSupabase = (boat: Boat) => ({
     id: boat.id,
     name: boat.name,
@@ -107,7 +77,6 @@ export function useSupabaseBoats() {
     side: boat.side
   });
 
-  // CRUD operations
   const addBoat = async (boat: Omit<Boat, 'id' | 'arrivalDate'>) => {
     try {
       const newBoat = {
@@ -116,19 +85,16 @@ export function useSupabaseBoats() {
         length: Number(boat.length),
         stay: Number(boat.stay)
       };
-      
+
       const { data, error } = await supabase
         .from('boats')
         .insert([newBoat])
         .select();
-        
+
       if (error) throw error;
-      
       return data?.[0]?.id;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add boat';
-      toast.error(`Error adding boat: ${message}`);
-      console.error('Error adding boat:', err);
+      toast.error('Error adding boat');
       throw err;
     }
   };
@@ -139,12 +105,10 @@ export function useSupabaseBoats() {
         .from('boats')
         .update(boatToSupabase(updatedBoat))
         .eq('id', updatedBoat.id);
-        
+
       if (error) throw error;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update boat';
-      toast.error(`Error updating boat: ${message}`);
-      console.error('Error updating boat:', err);
+      toast.error('Error updating boat');
       throw err;
     }
   };
@@ -155,12 +119,10 @@ export function useSupabaseBoats() {
         .from('boats')
         .delete()
         .eq('id', id);
-        
+
       if (error) throw error;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete boat';
-      toast.error(`Error deleting boat: ${message}`);
-      console.error('Error deleting boat:', err);
+      toast.error('Error deleting boat');
       throw err;
     }
   };
