@@ -41,16 +41,17 @@ function SortableBoatCard({
     ? new Date(boat.arrivalDate).toLocaleDateString()
     : '';
 
-  let bgClass = 'bg-white';
-  let borderClass = 'border border-gray-200';
-
-  if (isSpace) {
-    bgClass = 'bg-yellow-100';
-    borderClass = 'border-2 border-yellow-300';
-  } else if (isLeavingSoon) {
-    bgClass = 'bg-orange-50';
-    borderClass = 'border-2 border-orange-400';
-  }
+    let bgClass = 'bg-blue-50';
+    let borderClass = 'border border-blue-200';
+    
+    if (isSpace) {
+      bgClass = 'bg-yellow-100';
+      borderClass = 'border-2 border-yellow-300';
+    } else if (isLeavingSoon) {
+      bgClass = 'bg-orange-50';
+      borderClass = 'border-2 border-orange-400';
+    }
+    
 
   return (
     <div
