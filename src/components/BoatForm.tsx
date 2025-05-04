@@ -13,21 +13,25 @@ export function BoatForm({ addBoat, editMode, currentBoat, updateBoat, cancelEdi
   const [form, setForm] = useState<Partial<Boat>>({
     name: '',
     owner: '',
-    length: '',
-    stay: '',
+    length: 0,
+    stay: 0,
     notes: '',
     side: 'bankside'
   });
 
   useEffect(() => {
     if (currentBoat) {
-      setForm(currentBoat);
+      setForm({
+        ...currentBoat,
+        length: currentBoat.length,
+        stay: currentBoat.stay,
+      });
     } else {
       setForm({
         name: '',
         owner: '',
-        length: '',
-        stay: '',
+        length: 0,
+        stay: 0,
         notes: '',
         side: 'bankside'
       });
@@ -36,19 +40,37 @@ export function BoatForm({ addBoat, editMode, currentBoat, updateBoat, cancelEdi
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.owner || !form.length || !form.stay || !form.side) return;
+    if (
+      !form.name ||
+      !form.owner ||
+      !form.length ||
+      !form.stay ||
+      !form.side
+    ) return;
+
+    const cleanedForm: Boat = {
+      ...(form as Boat),
+      length: Number(form.length),
+      stay: Number(form.stay),
+    };
 
     if (editMode && currentBoat) {
-      updateBoat({ ...currentBoat, ...form } as Boat);
+      updateBoat({ ...currentBoat, ...cleanedForm });
     } else {
-      addBoat(form as Boat);
+      const newBoat: Boat = {
+        ...cleanedForm,
+        id: crypto.randomUUID(), // Ensure unique ID for new boat
+        arrivalDate: new Date().toISOString(),
+        position: 0,
+      };
+      addBoat(newBoat);
     }
-    
+
     setForm({
       name: '',
       owner: '',
-      length: '',
-      stay: '',
+      length: 0,
+      stay: 0,
       notes: '',
       side: 'bankside'
     });
@@ -85,7 +107,7 @@ export function BoatForm({ addBoat, editMode, currentBoat, updateBoat, cancelEdi
         <input
           type="number"
           value={form.length}
-          onChange={e => setForm(prev => ({ ...prev, length: e.target.value }))}
+          onChange={e => setForm(prev => ({ ...prev, length: Number(e.target.value) }))}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Enter length in feet"
           min="1"
@@ -98,7 +120,7 @@ export function BoatForm({ addBoat, editMode, currentBoat, updateBoat, cancelEdi
         <input
           type="number"
           value={form.stay}
-          onChange={e => setForm(prev => ({ ...prev, stay: e.target.value }))}
+          onChange={e => setForm(prev => ({ ...prev, stay: Number(e.target.value) }))}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Enter number of nights"
           min="1"

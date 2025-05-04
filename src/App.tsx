@@ -45,6 +45,12 @@ export default function App() {
     setCurrentBoat(null);
   };
 
+  const handleDeleteBoat = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this boat?')) {
+      await deleteBoat(id);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!active || !over || active.id === over.id) return;
@@ -172,7 +178,7 @@ export default function App() {
                 boats={banksideBoats}
                 totalSpace={totalSpace}
                 availableSpace={banksideSpace}
-                onDelete={deleteBoat}
+                onDelete={handleDeleteBoat}
                 onEdit={editBoat}
               />
             </SortableContext>
@@ -183,7 +189,7 @@ export default function App() {
                 boats={offsideBoats}
                 totalSpace={totalSpace}
                 availableSpace={offsideSpace}
-                onDelete={deleteBoat}
+                onDelete={handleDeleteBoat}
                 onEdit={editBoat}
               />
             </SortableContext>
