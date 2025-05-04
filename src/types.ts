@@ -1,10 +1,11 @@
 export interface Boat {
   id: string;
   name: string;
-  owner?: string;
-  length: string | number;
-  stay?: string | number;
+  owner: string;
+  length: number;
+  stay: number;
+  arrivalDate: string;
   notes?: string;
-  arrivalDate?: string;
   side: 'bankside' | 'offside';
+  position?: number;
 }

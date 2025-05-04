@@ -13,21 +13,17 @@ import type { Boat } from './types';
 export default function App() {
   const {
     boats,
-    loading,
-    error,
     addBoat,
     updateBoat,
-    deleteBoat
+    deleteBoat,
   } = useSupabaseBoats();
 
   const [editMode, setEditMode] = useState(false);
   const [currentBoat, setCurrentBoat] = useState<Boat | null>(null);
+
   const totalSpace = 564;
 
-  const updateStayDurations = useCallback(() => {
-    // Just for UI refresh
-  }, []);
-
+  const updateStayDurations = useCallback(() => {}, []);
   useMidnightUpdate(updateStayDurations);
 
   const editBoat = (id: string) => {
@@ -49,22 +45,38 @@ export default function App() {
     setCurrentBoat(null);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!active || !over || active.id === over.id) return;
 
-    const oldIndex = boats.findIndex(b => b.id === active.id);
-    const newIndex = boats.findIndex(b => b.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
+    const activeBoat = boats.find(b => b.id === active.id);
+    const overBoat = boats.find(b => b.id === over.id);
+    if (!activeBoat || !overBoat) return;
 
-    const draggedBoat = boats[oldIndex];
-    const targetBoat = boats[newIndex];
+    const newSide = overBoat.side;
 
-    const reordered = arrayMove([...boats], oldIndex, newIndex).map((b, i) =>
-      b.id === draggedBoat.id ? { ...b, side: targetBoat.side } : b
-    );
+    const updatedBoats = boats
+      .filter(b => b.side === newSide)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-    // Optional: persist new order to Supabase in the future
+    const oldIndex = updatedBoats.findIndex(b => b.id === active.id);
+    const newIndex = updatedBoats.findIndex(b => b.id === over.id);
+
+    let reordered = updatedBoats;
+    if (oldIndex !== -1 && newIndex !== -1) {
+      reordered = arrayMove(updatedBoats, oldIndex, newIndex);
+    } else {
+      reordered.splice(newIndex, 0, { ...activeBoat, side: newSide });
+    }
+
+    for (let i = 0; i < reordered.length; i++) {
+      const updated = {
+        ...reordered[i],
+        position: i,
+        side: newSide,
+      };
+      await updateBoat(updated);
+    }
   };
 
   const exportData = () => {
@@ -85,18 +97,21 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  const banksideBoats = boats.filter(b => b.side === 'bankside');
-  const offsideBoats = boats.filter(b => b.side === 'offside');
+  const banksideBoats = boats
+    .filter(b => b.side === 'bankside')
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  const banksideSpace = totalSpace - banksideBoats.reduce((acc, b) => {
-    if (b.name.trim().toUpperCase() === 'SPACE') return acc;
-    return acc + Number(b.length);
-  }, 0);
+  const offsideBoats = boats
+    .filter(b => b.side === 'offside')
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  const offsideSpace = totalSpace - offsideBoats.reduce((acc, b) => {
-    if (b.name.trim().toUpperCase() === 'SPACE') return acc;
-    return acc + Number(b.length);
-  }, 0);
+  const banksideSpace = totalSpace - banksideBoats
+    .filter(b => b.name.trim().toUpperCase() !== 'SPACE')
+    .reduce((acc, b) => acc + Number(b.length), 0);
+
+  const offsideSpace = totalSpace - offsideBoats
+    .filter(b => b.name.trim().toUpperCase() !== 'SPACE')
+    .reduce((acc, b) => acc + Number(b.length), 0);
 
   const leavingBoats = boats.filter(b => {
     const arrivalDate = new Date(b.arrivalDate);
@@ -113,15 +128,13 @@ export default function App() {
             <Ship size={32} />
             <h1 className="text-3xl font-bold">Saltisford Mooring Tracker</h1>
           </div>
-          <div className="flex gap-4">
-            <button
-              onClick={exportData}
-              className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              <Download size={20} />
-              Export Data
-            </button>
-          </div>
+          <button
+            onClick={exportData}
+            className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            <Download size={20} />
+            Export Data
+          </button>
         </div>
       </header>
 
@@ -140,19 +153,6 @@ export default function App() {
           />
         </div>
 
-        {(banksideSpace < 50 || offsideSpace < 50) && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-xl">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={24} className="text-yellow-600" />
-              <p className="text-yellow-700 font-medium">
-                Warning: Limited space available!
-                {banksideSpace < 50 && ` Bankside: ${banksideSpace}' remaining.`}
-                {offsideSpace < 50 && ` Offside: ${offsideSpace}' remaining.`}
-              </p>
-            </div>
-          </div>
-        )}
-
         {leavingBoats.length > 0 && (
           <div className="bg-orange-50 border-l-4 border-orange-400 p-4 mb-6 rounded-r-xl">
             <div className="flex items-center gap-2">
@@ -165,26 +165,29 @@ export default function App() {
         )}
 
         <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
-          <SortableContext items={boats.map(b => b.id)}>
-            <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <SortableContext items={banksideBoats.map(b => b.id)}>
               <MooringSpace
-                title="Bankside Mooring"
+                title="Bankside"
                 boats={banksideBoats}
                 totalSpace={totalSpace}
                 availableSpace={banksideSpace}
                 onDelete={deleteBoat}
                 onEdit={editBoat}
               />
+            </SortableContext>
+
+            <SortableContext items={offsideBoats.map(b => b.id)}>
               <MooringSpace
-                title="Offside Mooring"
+                title="Offside"
                 boats={offsideBoats}
                 totalSpace={totalSpace}
                 availableSpace={offsideSpace}
                 onDelete={deleteBoat}
                 onEdit={editBoat}
               />
-            </div>
-          </SortableContext>
+            </SortableContext>
+          </div>
         </DndContext>
       </main>
     </div>
