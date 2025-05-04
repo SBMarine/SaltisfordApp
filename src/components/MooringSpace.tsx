@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Boat } from '../types';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -23,11 +23,11 @@ function SortableBoatCard({
   onEdit: (id: string) => void;
 }) {
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
+    attributes,
+    listeners,
   } = useSortable({ id: boat.id });
 
   const style = {
@@ -41,31 +41,37 @@ function SortableBoatCard({
     ? new Date(boat.arrivalDate).toLocaleDateString()
     : '';
 
-    let bgClass = 'bg-blue-50';
-    let borderClass = 'border border-blue-200';
-    
-    if (isSpace) {
-      bgClass = 'bg-yellow-100';
-      borderClass = 'border-2 border-yellow-300';
-    } else if (isLeavingSoon) {
-      bgClass = 'bg-orange-50';
-      borderClass = 'border-2 border-orange-400';
-    }
-    
+  let bgClass = 'bg-blue-50';
+  let borderClass = 'border border-blue-200';
+
+  if (isSpace) {
+    bgClass = 'bg-yellow-100';
+    borderClass = 'border-2 border-yellow-300';
+  } else if (isLeavingSoon) {
+    bgClass = 'bg-orange-50';
+    borderClass = 'border-2 border-orange-400';
+  }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className={`w-full p-4 rounded-lg shadow-sm ${bgClass} ${borderClass}`}
     >
       <div className="flex justify-between items-start mb-2">
-        <div className="flex-1">
+        <div className="flex-1 flex items-center gap-2">
+          {/* 👇 Drag handle restricted to icon only */}
+          <span
+            {...attributes}
+            {...listeners}
+            className="cursor-grab text-gray-500 hover:text-gray-800"
+            title="Drag to reorder"
+          >
+            <GripVertical size={18} />
+          </span>
           <h3 className="text-lg font-semibold">{boat.name}</h3>
         </div>
-        <div className="flex gap-2 ml-4">
+        <div className="flex gap-2 ml-4 items-center">
           <button
             type="button"
             onClick={() => onEdit(boat.id)}
